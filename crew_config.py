@@ -1,6 +1,7 @@
 from crewai import Crew, Agent, Task
 from baserow_handler import executar_acao
 from openai_config import setup_openai
+from baserow_handler import enviar_relatorio_diario 
 import json
 
 setup_openai()
@@ -171,8 +172,15 @@ crew = Crew(
 # Função principal do sistema
 def process_message(text):
     try:
+        # ⚠️ Detecta comando direto "relatorio" e executa função especial
+        if text.strip().lower() == "relatorio":
+            return enviar_relatorio_diario() or "Relatório gerado, mas sem dados relevantes."
+
+        # 👇 Caso contrário, segue com o fluxo normal CrewAI
         resultado = crew.kickoff(inputs={"input": text})
         return resultado if isinstance(resultado, str) else str(resultado)
+
     except Exception as e:
         return f"[Erro interno]\n{type(e).__name__}: {e}"
+
 
