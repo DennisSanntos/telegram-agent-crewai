@@ -180,14 +180,12 @@ def normalizar_valor(valor):
     )
 
 def corresponde(row, filtros):
-    for campo_legivel, valor_filtro in filtros.items():
-        field_id = FIELD_MAP.get(campo_legivel, campo_legivel)
+    for field_id, valor_filtro in filtros.items():
         valor_row = row.get(field_id)
 
         if valor_row is None:
             return False
 
-        # Normaliza ambos os lados
         norm_row = normalizar_valor(valor_row)
         norm_filtro = normalizar_valor(valor_filtro)
 
@@ -199,6 +197,7 @@ def corresponde(row, filtros):
                 return False
 
     return True
+
 
 
 
