@@ -187,6 +187,7 @@ def corresponde(row, filtros):
         if valor_row is None:
             return False
 
+        # Normaliza ambos os lados
         norm_row = normalizar_valor(valor_row)
         norm_filtro = normalizar_valor(valor_filtro)
 
@@ -198,6 +199,7 @@ def corresponde(row, filtros):
                 return False
 
     return True
+
 
 
 
