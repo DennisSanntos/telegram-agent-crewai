@@ -187,14 +187,15 @@ def corresponde(row, filtros):
         if valor_row is None:
             return False
 
-        if isinstance(valor_row, dict):
-            valor_row = valor_row.get("value", "")
+        norm_row = normalizar_valor(valor_row)
+        norm_filtro = normalizar_valor(valor_filtro)
 
-        if isinstance(valor_filtro, dict):
-            valor_filtro = valor_filtro.get("value", valor_filtro)
-
-        if str(valor_row).strip().lower() != str(valor_filtro).strip().lower():
-            return False
+        if isinstance(norm_row, list) and isinstance(norm_filtro, list):
+            if not all(item in norm_row for item in norm_filtro):
+                return False
+        else:
+            if norm_row != norm_filtro:
+                return False
 
     return True
 
