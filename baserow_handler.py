@@ -179,87 +179,98 @@ def normalizar_valor(valor):
         .decode("utf-8")
     )
 
-def corresponde(row, filtros):
-    for field_id, valor_filtro in filtros.items():
-        valor_row = row.get(field_id)
-
-        if valor_row is None:
-            return False
-
-        norm_row = normalizar_valor(valor_row)
-        norm_filtro = normalizar_valor(valor_filtro)
-
-        if isinstance(norm_row, list) and isinstance(norm_filtro, list):
-            if not all(item in norm_row for item in norm_filtro):
-                return False
-        else:
-            if norm_row != norm_filtro:
-                return False
-
-    return True
-
-
-
 
 
 def consultar_os(filtros):
     print(f"[🔍] Consultando OS com filtros: {filtros}")
-    filtros = mapear_campos(filtros)
+    filtros_mapeados = mapear_campos(filtros)
+
+    # Monta a URL com filtros diretos na query string
+    params = {
+        "user_field_names": "false"
+    }
+    for field_id, valor in filtros_mapeados.items():
+        if isinstance(valor, (dict, list)):
+            continue  # Skip complex types
+        params[f"filter__{field_id}__equal"] = valor
+
     try:
-        response = requests.get(BASE_URL, headers=HEADERS)
+        response = requests.get(BASE_URL, headers=HEADERS, params=params)
         if response.status_code == 200:
             dados = response.json()["results"]
-            resultados = [row for row in dados if corresponde(row, filtros)]
-            if resultados:
-                return f"🔍 {len(resultados)} resultado(s):\n\n" + "\n\n".join(formatar_os(r) for r in resultados)
+            if dados:
+                return f"🔍 {len(dados)} resultado(s):\n\n" + "\n\n".join(formatar_os(r) for r in dados)
             return "Nenhuma OS encontrada."
         else:
             return f"❌ Erro ao consultar OS ({response.status_code})"
     except Exception as e:
         return f"❌ Erro na consulta: {e}"
 
+
 def editar_os(criterios, novos_dados):
     print(f"[✏️] Buscando OS para editar com critérios: {criterios}")
     criterios = mapear_campos(criterios)
     novos_dados = mapear_campos(novos_dados)
+
+    # Monta os parâmetros de filtro na query string
+    params = {
+        "user_field_names": "false"
+    }
+    for field_id, valor in criterios.items():
+        if isinstance(valor, (dict, list)):
+            continue
+        params[f"filter__{field_id}__equal"] = valor
+
     try:
-        response = requests.get(BASE_URL, headers=HEADERS)
+        response = requests.get(BASE_URL, headers=HEADERS, params=params)
         if response.status_code == 200:
             rows = response.json()["results"]
-            for row in rows:
-                if corresponde(row, criterios):
-                    row_id = row["id"]
-                    update_response = requests.patch(f"{BASE_URL}{row_id}/", headers=HEADERS, json=novos_dados)
-                    if update_response.status_code == 200:
-                        return "✏️ OS atualizada com sucesso."
-                    else:
-                        return f"❌ Erro ao atualizar: {update_response.status_code} - {update_response.text}"
-            return "OS não encontrada para edição."
+            if not rows:
+                return "OS não encontrada para edição."
+            row_id = rows[0]["id"]  # Atualiza a primeira encontrada
+            update_response = requests.patch(
+                f"{BASE_URL}{row_id}/", headers=HEADERS, json=novos_dados
+            )
+            if update_response.status_code == 200:
+                return "✏️ OS atualizada com sucesso."
+            else:
+                return f"❌ Erro ao atualizar: {update_response.status_code} - {update_response.text}"
         else:
             return f"❌ Erro na busca ({response.status_code})"
     except Exception as e:
         return f"❌ Erro na edição: {e}"
 
+
 def excluir_os(criterios):
     print(f"[🗑️] Buscando OS para exclusão com critérios: {criterios}")
     criterios = mapear_campos(criterios)
+
+    # Monta os parâmetros de filtro na query string
+    params = {
+        "user_field_names": "false"
+    }
+    for field_id, valor in criterios.items():
+        if isinstance(valor, (dict, list)):
+            continue
+        params[f"filter__{field_id}__equal"] = valor
+
     try:
-        response = requests.get(BASE_URL, headers=HEADERS)
+        response = requests.get(BASE_URL, headers=HEADERS, params=params)
         if response.status_code == 200:
             rows = response.json()["results"]
-            for row in rows:
-                if corresponde(row, criterios):
-                    row_id = row["id"]
-                    delete_response = requests.delete(f"{BASE_URL}{row_id}/", headers=HEADERS)
-                    if delete_response.status_code == 204:
-                        return "🗑️ OS excluída com sucesso."
-                    else:
-                        return f"❌ Erro ao excluir: {delete_response.status_code} - {delete_response.text}"
-            return "OS não encontrada para exclusão."
+            if not rows:
+                return "OS não encontrada para exclusão."
+            row_id = rows[0]["id"]  # Exclui a primeira encontrada
+            delete_response = requests.delete(f"{BASE_URL}{row_id}/", headers=HEADERS)
+            if delete_response.status_code == 204:
+                return "🗑️ OS excluída com sucesso."
+            else:
+                return f"❌ Erro ao excluir: {delete_response.status_code} - {delete_response.text}"
         else:
             return f"❌ Erro ao buscar OS ({response.status_code})"
     except Exception as e:
         return f"❌ Erro na exclusão: {e}"
+
 
 
 @tool("Executar ação no Baserow")
