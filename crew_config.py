@@ -153,15 +153,13 @@ Agora processe a seguinte mensagem:
 )
 
 
-# Task 2 — execução da ação com o JSON gerado
 task_execucao = Task(
     description="Execute a ação na base Baserow com base no JSON fornecido.",
     expected_output="Mensagem confirmando a ação ou listando resultados.",
     agent=executor,
     tool=executar_acao,
-    input={"json_resultado": "{output}"},
+    input_key="output"  # <- aqui está o segredo
 )
-
 
 # Orquestração da Crew
 crew = Crew(
