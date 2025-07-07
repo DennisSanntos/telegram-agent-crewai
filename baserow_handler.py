@@ -276,6 +276,122 @@ def excluir_os(criterios):
 
 
 
+TELEGRAM_TOKEN = "7504265835:AAGkAEHaMmBW59SlfQ0ga9XuUF-lsx83zRU"  # Substitua pelo token do seu bot
+GRUPOS_TELEGRAM = {
+    "Concierge": -4853736293,
+    "Recepção": -4962953534,
+    "Bar": -4790526640,
+    "Salão": -4951559297,
+    "Cozinha": -4810278204,
+    "Governança": -4957904992,
+}
+
+
+def enviar_mensagem_telegram(chat_id, texto):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": texto,
+        "parse_mode": "Markdown"
+    }
+    try:
+        response = requests.post(url, json=payload)
+        print(f"📨 Status: {response.status_code} | Grupo: {chat_id}")
+        print(response.text)
+    except Exception as e:
+        print(f"❌ Erro ao enviar para {chat_id}: {e}")
+
+def formatar_os_item(os, idx):
+    hospede = os.get(FIELD_MAP["Nome do Hóspede"], "")
+    quarto = os.get(FIELD_MAP["Quarto"], "")
+    prioridade = os.get(FIELD_MAP["Prioridade"], {}).get("value", "Normal")
+    horario = os.get(FIELD_MAP["Horário do Serviço"], "")
+    servico = os.get(FIELD_MAP["Tipo de Serviço"], "")
+    detalhes = os.get(FIELD_MAP["Detalhes do Pedido"], "")
+    data_servico = os.get(FIELD_MAP["Data do Serviço"], "")
+
+    return f"""🔖 OS-{idx:03} - Hóspedes: {hospede} - SUÍTE UH {quarto}
+  ⚡ {prioridade.upper()}
+  📅 {data_servico}
+  ⏰ {horario}
+  🎯 Serviço: {servico}
+  📝 Detalhes: {detalhes}"""
+
+def enviar_relatorio_diario():
+    hoje = datetime.date.today()
+    fim = hoje + datetime.timedelta(days=7)
+
+    print(f"[{datetime.datetime.now()}] 🚀 Início da geração do relatório")
+    print(f"🗓️ Intervalo de busca: {hoje} até {fim}")
+
+    try:
+        response = requests.get(BASE_URL, headers=HEADERS)
+        print(f"🔍 Requisição ao Baserow retornou: {response.status_code}")
+        if response.status_code != 200:
+            print(f"❌ Erro ao buscar OS: {response.status_code}")
+            return
+
+        dados = response.json().get("results", [])
+        print(f"📦 OS encontradas no total: {len(dados)}")
+
+        grupos_mensagens = {nome: [] for nome in GRUPOS_TELEGRAM}
+        data_hoje_fmt = hoje.strftime("%d/%m/%Y")
+
+        for idx, os in enumerate(dados, 1):
+            data_str = os.get(FIELD_MAP["Data do Serviço"])
+            if not data_str:
+                continue
+
+            try:
+                data_os = datetime.date.fromisoformat(data_str)
+            except:
+                continue
+
+            if data_os < hoje or data_os > fim:
+                print(f"ℹ️ OS-{idx:03} fora do intervalo, ignorada.")
+                continue
+
+            os_txt = formatar_os_item(os, idx)
+            dia_fmt = data_os.strftime("%d/%m/%Y")
+
+            if data_os == hoje:
+                categoria = f"🔴 HOJE\n{os_txt}"
+            elif data_os == hoje + datetime.timedelta(days=1):
+                categoria = f"🟡 AMANHÃ\n{os_txt}"
+            else:
+                categoria = f"🟢 {dia_fmt}\n{os_txt}"
+
+            deps = os.get(FIELD_MAP["Departamentos"], [])
+            print(f"🧪 OS-{idx:03} Departamentos: {deps}")
+
+            for dep in deps:
+                dep_id = dep.get("id") if isinstance(dep, dict) else dep
+                nome_dep = next((k for k, v in DEPARTAMENTOS.items() if v == dep_id), None)
+                if nome_dep:
+                    grupos_mensagens[nome_dep].append(categoria)
+
+        total_enviados = 0
+        for nome_dep, mensagens in grupos_mensagens.items():
+            corpo = f"📋 OS DOS PRÓXIMOS 7 DIAS - {data_hoje_fmt}\n\n"
+            corpo += "\n\n".join(mensagens) if mensagens else "✅ Nenhuma OS nos próximos 7 dias."
+
+            chat_id = GRUPOS_TELEGRAM[nome_dep]
+            print(f"📨 Enviando para {nome_dep} ({chat_id})...")
+            r = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": corpo, "parse_mode": "Markdown"}
+            )
+            print(f"📨 Status: {r.status_code} | Grupo: {chat_id}")
+            print(r.text)
+            if r.status_code == 200:
+                total_enviados += 1
+
+        return f"✅ Mensagens enviadas para {total_enviados} departamentos."
+
+    except Exception as e:
+        print(f"🔥 Exceção inesperada ao gerar o relatório:\n{e}")
+
+
 @tool("Executar ação no Baserow")
 def executar_acao(json_resultado: dict) -> str:
     """
