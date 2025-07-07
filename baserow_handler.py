@@ -112,6 +112,10 @@ def mapear_campos(dados: dict) -> dict:
         if not id_campo:
             continue
 
+                id_campo = FIELD_MAP.get(chave)
+        if not id_campo:
+            continue
+
         if chave == "Prioridade":
             valor = prioridade_para_id(valor)
         elif chave == "Data do Serviço":
@@ -121,8 +125,11 @@ def mapear_campos(dados: dict) -> dict:
         elif chave == "Quarto":
             numeros = re.findall(r"\d+", str(valor))
             valor = int(numeros[0]) if numeros else 0
+        else:
+            valor = str(valor).strip()  # <- aplica para Horário do Serviço e outros
 
         mapeado[id_campo] = valor
+
 
     # Adiciona campo Departamentos baseado no conteúdo
     mapeado[FIELD_MAP["Departamentos"]] = inferir_departamentos(dados)
