@@ -9,12 +9,11 @@ TELEGRAM_URL = f'https://api.telegram.org/bot{TOKEN}/sendMessage'
 
 app = Flask(__name__)
 
-
 @app.route('/', methods=['GET'])
 def home():
     return 'Bot online!', 200
 
-@app.route('/', methods=['POST'])
+@app.route('/webhook', methods=['POST'])  # <- Alterado aqui
 def webhook():
     data = request.json
     try:
@@ -41,4 +40,3 @@ def webhook():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-
